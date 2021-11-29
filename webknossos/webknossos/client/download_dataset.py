@@ -8,7 +8,11 @@ from rich.progress import track
 
 from webknossos.client._generated.api.datastore import dataset_download
 from webknossos.client._generated.api.default import dataset_info
-from webknossos.client.context import _get_generated_client
+from webknossos.client.context import (
+    _get_context,
+    _get_generated_client,
+    _get_generated_datastore_client,
+)
 from webknossos.dataset import Dataset, LayerCategoryType
 from webknossos.geometry import BoundingBox, Mag
 
@@ -47,6 +51,8 @@ def download_dataset(
     scale = cast(Tuple[float, float, float], tuple(parsed.data_source.scale))
     data_layers = parsed.data_source.data_layers
     dataset = Dataset.create(actual_path, name=parsed.name, scale=scale)
+    datastore_info = parsed.data_store
+    datastore_client = _get_generated_datastore_client(datastore_info.url)
     for layer_name in layers or [i.name for i in data_layers]:
 
         response_layers = [i for i in data_layers if i.name == layer_name]
@@ -84,7 +90,7 @@ def download_dataset(
             aligned_bbox = layer.bounding_box.align_with_mag(mag, ceil=True)
             for chunk in track(
                 list(aligned_bbox.chunk(_DOWNLOAD_CHUNK_SIZE, _DOWNLOAD_CHUNK_SIZE)),
-                description=f"Downloading {layer.name} layer",
+                description=f"Downloading layer={layer.name} mag={mag}",
             ):
                 aligned_chunk_in_mag = chunk.in_mag(mag)
                 response = dataset_download.sync_detailed(
@@ -92,15 +98,16 @@ def download_dataset(
                     data_set_name=dataset_name,
                     data_layer_name=layer_name,
                     resolution=mag.max_dim_log2,
-                    client=client,
+                    client=datastore_client,
                     x=aligned_chunk_in_mag.topleft.x,
                     y=aligned_chunk_in_mag.topleft.y,
                     z=aligned_chunk_in_mag.topleft.z,
                     width=aligned_chunk_in_mag.size.x,
                     height=aligned_chunk_in_mag.size.y,
                     depth=aligned_chunk_in_mag.size.z,
+                    token=_get_context().datastore_token,
                 )
-                assert response.status_code == 200
+                assert response.status_code == 200, response
                 data = np.frombuffer(
                     response.content, dtype=layer.dtype_per_channel
                 ).reshape(layer.num_channels, *aligned_chunk_in_mag.size, order="F")

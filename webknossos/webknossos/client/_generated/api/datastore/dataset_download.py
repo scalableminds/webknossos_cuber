@@ -1,4 +1,4 @@
-from typing import Any, Dict, Union
+from typing import Any, Dict, Optional, Union
 
 import httpx
 
@@ -19,6 +19,7 @@ def _get_kwargs(
     height: int,
     depth: int,
     resolution: int,
+    token: Optional[str] = None,
     half_byte: Union[Unset, None, bool] = False,
 ) -> Dict[str, Any]:
     url = "{}/data/datasets/{organizationName}/{dataSetName}/layers/{dataLayerName}/data".format(
@@ -39,6 +40,7 @@ def _get_kwargs(
         "height": height,
         "depth": depth,
         "resolution": resolution,
+        "token": token,
         "halfByte": half_byte,
     }
     params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
@@ -74,6 +76,7 @@ def sync_detailed(
     height: int,
     depth: int,
     resolution: int,
+    token: Optional[str] = None,
     half_byte: Union[Unset, None, bool] = False,
 ) -> Response[Any]:
     kwargs = _get_kwargs(
@@ -88,6 +91,7 @@ def sync_detailed(
         height=height,
         depth=depth,
         resolution=resolution,
+        token=token,
         half_byte=half_byte,
     )
 
@@ -111,6 +115,7 @@ async def asyncio_detailed(
     height: int,
     depth: int,
     resolution: int,
+    token: Optional[str] = None,
     half_byte: Union[Unset, None, bool] = False,
 ) -> Response[Any]:
     kwargs = _get_kwargs(

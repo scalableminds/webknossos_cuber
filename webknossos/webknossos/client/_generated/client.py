@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Optional
 
 import attr
 
@@ -10,7 +10,7 @@ class Client:
     base_url: str
     cookies: Dict[str, str] = attr.ib(factory=dict, kw_only=True)
     headers: Dict[str, str] = attr.ib(factory=dict, kw_only=True)
-    timeout: float = attr.ib(5.0, kw_only=True)
+    timeout: Optional[float] = attr.ib(None, kw_only=True)
 
     def get_headers(self) -> Dict[str, str]:
         """Get headers to be used in all endpoints"""
@@ -27,7 +27,7 @@ class Client:
         """Get a new client matching this one with additional cookies"""
         return attr.evolve(self, cookies={**self.cookies, **cookies})
 
-    def get_timeout(self) -> float:
+    def get_timeout(self) -> Optional[float]:
         return self.timeout
 
     def with_timeout(self, timeout: float) -> "Client":
