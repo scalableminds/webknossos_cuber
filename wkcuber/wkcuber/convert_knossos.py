@@ -1,7 +1,10 @@
 import time
 import logging
+from math import floor, ceil
+from itertools import product
 from pathlib import Path
-from typing import Tuple, cast, Optional
+from typing import Tuple, cast, Optional, Iterable
+from webknossos.dataset.downsampling_utils import DEFAULT_EDGE_LEN
 
 import wkw
 from argparse import ArgumentParser, Namespace
@@ -20,6 +23,15 @@ from .utils import (
 )
 from .knossos import CUBE_EDGE_LEN
 from .metadata import convert_element_class_to_dtype
+
+DEFAULT_EDGE_LEN = 1024
+
+
+def get_regular_chunks(min_z: int, max_z: int, chunk_size: int) -> Iterable[int]:
+    i = floor(min_z / chunk_size) * chunk_size
+    while i < ceil((max_z + 1) / chunk_size) * chunk_size:
+        yield i
+        i += chunk_size
 
 
 def create_parser() -> ArgumentParser:
@@ -63,14 +75,19 @@ def convert_cube_job(
     cube_xyz, source_knossos_info, target_wkw_info = args
     logging.info("Converting {},{},{}".format(cube_xyz[0], cube_xyz[1], cube_xyz[2]))
     ref_time = time.time()
-    offset = cast(Tuple[int, int, int], tuple(x * CUBE_EDGE_LEN for x in cube_xyz))
-    size = cast(Tuple[int, int, int], (CUBE_EDGE_LEN,) * 3)
+    for x, y, z in product(
+        list(range(cube_xyz[0], cube_xyz[0] + DEFAULT_EDGE_LEN, CUBE_EDGE_LEN)),
+        list(range(cube_xyz[1], cube_xyz[1] + DEFAULT_EDGE_LEN, CUBE_EDGE_LEN)),
+        list(range(cube_xyz[2], cube_xyz[2] + DEFAULT_EDGE_LEN, CUBE_EDGE_LEN)),
+    ):
+        offset = cast(Tuple[int, int, int], (x, y, z))
+        size = cast(Tuple[int, int, int], (CUBE_EDGE_LEN,) * 3)
 
-    with open_knossos(source_knossos_info) as source_knossos, open_wkw(
-        target_wkw_info
-    ) as target_wkw:
-        cube_data = source_knossos.read(offset, size)
-        target_wkw.write(offset, cube_data)
+        with open_knossos(source_knossos_info) as source_knossos, open_wkw(
+            target_wkw_info
+        ) as target_wkw:
+            cube_data = source_knossos.read(offset, size)
+            target_wkw.write(offset, cube_data)
     logging.debug(
         "Converting of {},{},{} took {:.8f}s".format(
             cube_xyz[0], cube_xyz[1], cube_xyz[2], time.time() - ref_time
@@ -102,9 +119,28 @@ def convert_knossos(
                 )
                 exit(1)
 
-            knossos_cubes.sort()
+            min_x, min_y, min_z = min(knossos_cubes)
+            max_x, max_y, max_z = max(knossos_cubes)
+
+            wkw_cubes = product(
+                list(
+                    get_regular_chunks(
+                        min_x * CUBE_EDGE_LEN, max_x * CUBE_EDGE_LEN, DEFAULT_EDGE_LEN
+                    )
+                ),
+                list(
+                    get_regular_chunks(
+                        min_y * CUBE_EDGE_LEN, max_y * CUBE_EDGE_LEN, DEFAULT_EDGE_LEN
+                    )
+                ),
+                list(
+                    get_regular_chunks(
+                        min_z * CUBE_EDGE_LEN, max_z * CUBE_EDGE_LEN, DEFAULT_EDGE_LEN
+                    )
+                ),
+            )
             job_args = []
-            for cube_xyz in knossos_cubes:
+            for cube_xyz in wkw_cubes:
                 job_args.append((cube_xyz, source_knossos_info, target_wkw_info))
 
             wait_and_ensure_success(executor.map_to_futures(convert_cube_job, job_args))
