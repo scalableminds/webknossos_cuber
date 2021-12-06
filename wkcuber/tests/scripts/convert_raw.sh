@@ -10,7 +10,7 @@ for DTYPE in "uint8" "float32"; do
 
     NAME="data_$DTYPE"
     INPUT_FILE="$BASE_OUTPUT_DIR/$NAME.raw"
-    python -c "import numpy as np; np.arange(128**3, dtype=np.$DTYPE).reshape(128, 128, 128).tofile('$INPUT_FILE')"
+    python -c "import numpy as np; import sys; np.arange(128**3, dtype=np.$DTYPE).reshape(128, 128, 128).tofile(sys.stdout)" > $INPUT_FILE
 
     python -m wkcuber.convert_raw \
     --layer_name $NAME \
