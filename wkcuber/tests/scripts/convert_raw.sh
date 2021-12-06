@@ -23,5 +23,7 @@ for DTYPE in "uint8" "float32"; do
     [ -d $OUTPUT_DIR/$NAME/1 ]
     [ $(find $OUTPUT_DIR/$NAME/1 -mindepth 3 -name "*.wkw" | wc -l) -eq 1 ]
     [ -e $OUTPUT_DIR/datasource-properties.json ]
+    
+    rm -r $OUTPUT_DIR
 
 done
