@@ -8,11 +8,7 @@ from rich.progress import track
 
 from webknossos.client._generated.api.datastore import dataset_download
 from webknossos.client._generated.api.default import dataset_info
-from webknossos.client.context import (
-    _get_context,
-    _get_generated_client,
-    _get_generated_datastore_client,
-)
+from webknossos.client.context import _get_context, _get_generated_client
 from webknossos.dataset import Dataset, LayerCategoryType
 from webknossos.geometry import BoundingBox, Mag
 
@@ -39,9 +35,13 @@ def download_dataset(
         data_set_name=dataset_name,
         client=client,
     )
-    assert dataset_info_response.status_code == 200
+    assert dataset_info_response.status_code == 200, dataset_info_response
     parsed = dataset_info_response.parsed
     assert parsed is not None
+
+    datastore_client = _get_context().get_generated_datastore_client(
+        parsed.data_store.url
+    )
 
     actual_path = Path(dataset_name) if path is None else Path(path)
     if actual_path.exists():
@@ -51,8 +51,6 @@ def download_dataset(
     scale = cast(Tuple[float, float, float], tuple(parsed.data_source.scale))
     data_layers = parsed.data_source.data_layers
     dataset = Dataset.create(actual_path, name=parsed.name, scale=scale)
-    datastore_info = parsed.data_store
-    datastore_client = _get_generated_datastore_client(datastore_info.url)
     for layer_name in layers or [i.name for i in data_layers]:
 
         response_layers = [i for i in data_layers if i.name == layer_name]

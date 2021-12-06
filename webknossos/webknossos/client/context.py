@@ -104,13 +104,18 @@ def _cached__get_generated_client(
 ) -> GeneratedClient:
     """Generates a client which might contain an x-auth-token header."""
     if token is None:
-        return GeneratedClient(base_url=webknossos_url, timeout=None)
+        return GeneratedClient(base_url=webknossos_url, timeout=30)
     else:
         return GeneratedClient(
-            base_url=webknossos_url,
-            headers={"X-Auth-Token": token},
-            timeout=None,
+            base_url=webknossos_url, headers={"X-Auth-Token": token}, timeout=30
         )
+
+
+def _clear_all_context_caches() -> None:
+    _cached_ask_for_token.cache_clear()
+    _cached_get_org.cache_clear()
+    _cached_get_datastore_token.cache_clear()
+    _cached__get_generated_client.cache_clear()
 
 
 @attr.frozen
@@ -143,8 +148,22 @@ class _WebknossosContext:
     def generated_auth_client(self) -> GeneratedClient:
         return _cached__get_generated_client(self.url, self.required_token)
 
-    def generated_datastore_client(self, datastore_url: str) -> GeneratedClient:
-        return GeneratedClient(base_url=datastore_url, timeout=None)
+    def get_generated_datastore_client(
+        self, datastore_url: str, enforce_auth: bool = False
+    ) -> GeneratedClient:
+        if enforce_auth:
+            token: Optional[str] = self.required_token
+        else:
+            token = self.token
+
+        if token is None:
+            return GeneratedClient(base_url=datastore_url, timeout=120)
+        else:
+            return GeneratedClient(
+                base_url=datastore_url,
+                headers={"X-Auth-Token": token},
+                timeout=120,
+            )
 
 
 _webknossos_context_var: ContextVar[_WebknossosContext] = ContextVar(
@@ -173,7 +192,3 @@ def _get_generated_client(enforce_auth: bool = False) -> GeneratedClient:
         return _get_context().generated_auth_client
     else:
         return _get_context().generated_client
-
-
-def _get_generated_datastore_client(datastore_url: str) -> GeneratedClient:
-    return _get_context().generated_datastore_client(datastore_url)
