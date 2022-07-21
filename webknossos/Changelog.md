@@ -10,12 +10,28 @@ and this project adheres to [Semantic Versioning](http://semver.org/) `MAJOR.MIN
 For upgrade instructions, please check the respective *Breaking Changes* sections.
 
 ## Unreleased
-[Commits](https://github.com/scalableminds/webknossos-libs/compare/v0.10.6...HEAD)
+[Commits](https://github.com/scalableminds/webknossos-libs/compare/v0.10.8...HEAD)
+
+### Breaking Changes
+
+### Added
+
+### Changed
+
+### Fixed
+
+
+## [0.10.8](https://github.com/scalableminds/webknossos-libs/releases/tag/v0.10.8) - 2022-07-15
+[Commits](https://github.com/scalableminds/webknossos-libs/compare/v0.10.7...v0.10.8)
+
+
+## [0.10.7](https://github.com/scalableminds/webknossos-libs/releases/tag/v0.10.7) - 2022-07-14
+[Commits](https://github.com/scalableminds/webknossos-libs/compare/v0.10.6...v0.10.7)
 
 ### Breaking Changes
 - The `Annotation` constructor takes the `owner_name` argument instead of `username`. This is only important when using keyword arguments. The `username` attributes are still available as a proxy for the `owner_name` attribute, but deprecated. [#760](https://github.com/scalableminds/webknossos-libs/pull/760)
 - `user_id` on `AnnotationInfo` objects is deprecated, please use `owner_id` instead. [#760](https://github.com/scalableminds/webknossos-libs/pull/760)
-- When self-hosting a webKnossos server, please note that a webknossos version >= `22.06.0` is required. [#760](https://github.com/scalableminds/webknossos-libs/pull/760)
+- When self-hosting a webKnossos server, please note that a webknossos version >= `22.06.0` is required. [#760](https://github.com/scalableminds/webknossos-libs/pull/760) & [#764](https://github.com/scalableminds/webknossos-libs/pull/764)
 
 ### Added
 - `Dataset.upload()` accepts `Layer` objects from a `RemoteDataset` in the `layers_to_link` argument list. Also, `LayerToLink` can consume those via `LayerToLink.from_remote_layer()`. [#761](https://github.com/scalableminds/webknossos-libs/pull/761)
@@ -26,9 +42,13 @@ For upgrade instructions, please check the respective *Breaking Changes* section
 
 ### Changed
 - If a token is requested from the user on the commandline, it is now stored in the current context. Before, it was discarded. [#761](https://github.com/scalableminds/webknossos-libs/pull/761)
+- `Annotation.download()` does not need the `annotation_type` anymore, and the type can also be omitted from passed URLs. [#764](https://github.com/scalableminds/webknossos-libs/pull/764)
+- `Dataset.add_layer_from_images` allows smaller batch sizes for uncompressed writes. [#766](https://github.com/scalableminds/webknossos-libs/pull/766)
+- `Dataset.add_layer_from_images` uses multiprocessing by default. [#766](https://github.com/scalableminds/webknossos-libs/pull/766)
 
 ### Fixed
 - Fixed the bounding box inferral for volume annotation layers that were not saved in Mag(1). [#765](https://github.com/scalableminds/webknossos-libs/pull/765)
+
 
 
 ## [0.10.6](https://github.com/scalableminds/webknossos-libs/releases/tag/v0.10.6) - 2022-06-27
