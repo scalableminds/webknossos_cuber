@@ -38,7 +38,6 @@ pylint = "^2.10.2"
 pytest = "^6.2.4"
 s3fs = "^2022.3.0"
 CairoSVG = "^2.5.2"
-svgwrite = "^1.4.2"
 
 [tool.poetry.scripts]
 wkcuber = "wkcuber.__main__:main"

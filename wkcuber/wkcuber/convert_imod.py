@@ -11,8 +11,6 @@ import numpy as np
 import webknossos as wk
 from attr import evolve
 from PIL import Image
-from svgwrite import Drawing, px
-from svgwrite.shapes import Polygon
 from webknossos.utils import (
     add_verbose_flag,
     get_executor_for_args,
@@ -45,16 +43,10 @@ class Object:
         for contour in self.contours:
             output[contour.z] == contour
 
-    def draw_svg_paths(self, z: int, drawing: Drawing, height: int) -> List[Polygon]:
+    def draw_svg_paths(self, z: int, writer: "SVGWriter") -> None:
         z_contours = [c for c in self.contours if c.z == z]
         for contour in z_contours:
-            drawing.add(
-                drawing.polygon(
-                    points=[(p[0], height - p[1]) for p in contour.points],
-                    fill=f"rgb({(self.id + 1) % 256},0,0)",
-                    shape_rendering="crispEdges",
-                )
-            )
+            writer.add_polygon(contour.points, self.id)
 
 
 @dataclass
@@ -63,6 +55,30 @@ class Contour:
     z: int
     flags: int
     points: np.ndarray
+
+
+class SVGWriter:
+    buf: List[str]
+    width: int
+    height: int
+
+    def __init__(self, width, height) -> None:
+        self.width = width
+        self.height = height
+        self.buf = [
+            """<?xml version="1.0" encoding="utf-8" ?>""",
+            f"""<svg baseProfile="full" height="{self.height}" version="1.1" width="{self.width}" xmlns="http://www.w3.org/2000/svg" xmlns:ev="http://www.w3.org/2001/xml-events" xmlns:xlink="http://www.w3.org/1999/xlink"><defs />""",
+        ]
+
+    def add_polygon(self, points: np.ndarray, id: int) -> None:
+        assert id < 256
+        self.buf.append(
+            f"""<polygon fill="rgb({(id + 1) % 256}, 0, 0)" points="{" ".join([f"{p[0]},{self.height - p[1]}" for p in points])}" shape-rendering="crispEdges" />"""
+        )
+
+    def end(self) -> bytes:
+        self.buf.append("</svg>")
+        return "\n".join(self.buf).encode("utf-8")
 
 
 def parse_line(line: str) -> List[str]:
@@ -154,10 +170,10 @@ def parse_contour(parts: List[str], f: IO) -> Contour:
     for i in range(point_count):
         parts = parse_line(next(f))
         if z == -1:
-            z = int(parts[2])
+            z = int(round(float(parts[2])))
         else:
             assert z == int(
-                parts[2]
+                round(float(parts[2]))
             ), f"All points of a contour need to be in one section {z}"
         points[i, :] = (float(parts[0]), float(parts[1]))
 
@@ -168,17 +184,13 @@ def convert_slices(args: Tuple[wk.BoundingBox, Model, wk.MagView, Path]) -> None
     (z_bbox, model, target_mag, target_path) = args
 
     for z in range(z_bbox.topleft.z, z_bbox.bottomright.z):
-        svg_file_path = str(target_path / "temp" / f"{z:05}.svg")
-        png_file_path = str(target_path / "temp" / f"{z:05}.png")
-        drawing = Drawing(
-            svg_file_path,
-            size=(model.bounding_box.size.x, model.bounding_box.size.y),
-        )
+        png_file_path = target_path / "temp" / f"{z:05}.png"
+        svg_writer = SVGWriter(model.bounding_box.size.x, model.bounding_box.size.y)
         for object in model.objects:
-            object.draw_svg_paths(z, drawing, model.bounding_box.size.y)
-        drawing.save()
+            object.draw_svg_paths(z, svg_writer)
+        svg_bytes = svg_writer.end()
 
-        cairosvg.svg2png(url=svg_file_path, write_to=png_file_path)
+        cairosvg.svg2png(bytestring=svg_bytes, write_to=str(png_file_path))
 
     stack = np.zeros(z_bbox.size, dtype="uint32")
     for i, z in enumerate(range(z_bbox.topleft.z, z_bbox.bottomright.z)):
@@ -197,8 +209,10 @@ def main(args: Namespace) -> None:
 
         logger.info("Done parsing")
 
-        shutil.rmtree(args.target_path / "temp")
-        shutil.rmtree(args.target_path / "wkw")
+        if (args.target_path / "temp").exists():
+            shutil.rmtree(args.target_path / "temp")
+        if (args.target_path / "wkw").exists():
+            shutil.rmtree(args.target_path / "wkw")
         (args.target_path / "temp").mkdir(exist_ok=True, parents=True)
 
         logger.info("Generating WKW dataset")
