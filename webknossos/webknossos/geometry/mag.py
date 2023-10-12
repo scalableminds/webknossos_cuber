@@ -31,7 +31,7 @@ def _import_mag(mag_like: Any) -> Vec3Int:
 
     if as_vec3_int is None:
         raise ValueError(
-            f"Mag must be int or a vector3 of ints or a string shaped like e.g. 2-2-1. Got: {mag_like}"
+            "Mag must be int or a vector3 of ints or a string shaped like e.g. 2-2-1"
         )
     for m in as_vec3_int:
         assert (
