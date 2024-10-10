@@ -227,11 +227,8 @@ def test_create_dataset_with_layer_and_mag(
     assure_exported_properties(ds)
 
 
-@pytest.mark.skip(
-    reason="The test is flaky as sometimes fetching the file https://ngff.openmicroscopy.org/0.4/schemas/image.schema does fail. Disable it for now."
-)
 @pytest.mark.parametrize("output_path", [TESTOUTPUT_DIR, REMOTE_TESTOUTPUT_DIR])
-def test_ome_ngff_metadata(output_path: Path) -> None:
+def test_ome_0_4_ngff_metadata(output_path: Path) -> None:
     ds_path = prepare_dataset_path(DataFormat.Zarr, output_path)
     ds = Dataset(ds_path, voxel_size=(11, 11, 28))
     layer = ds.add_layer("color", COLOR_CATEGORY, data_format=DataFormat.Zarr)
@@ -268,6 +265,49 @@ def test_ome_ngff_metadata(output_path: Path) -> None:
         schema=json.loads(
             UPath(
                 "https://ngff.openmicroscopy.org/0.4/schemas/image.schema"
+            ).read_bytes()
+        ),
+    )
+
+
+@pytest.mark.parametrize("output_path", [TESTOUTPUT_DIR, REMOTE_TESTOUTPUT_DIR])
+def test_ome_0_5_ngff_metadata(output_path: Path) -> None:
+    ds_path = prepare_dataset_path(DataFormat.Zarr3, output_path)
+    ds = Dataset(ds_path, voxel_size=(11, 11, 28))
+    layer = ds.add_layer("color", COLOR_CATEGORY, data_format=DataFormat.Zarr3)
+    layer.add_mag("1")
+    layer.add_mag("2-2-1")
+
+    assert (ds_path / "zarr.json").exists()
+    assert (ds_path / "color" / "zarr.json").exists()
+    assert (ds_path / "color" / "1" / "zarr.json").exists()
+    assert (ds_path / "color" / "2-2-1" / "zarr.json").exists()
+
+    zarr_json = json.loads((ds_path / "color" / "zarr.json").read_bytes())
+    ome_metadata = zarr_json["attributes"]["ome"]
+    assert len(ome_metadata["multiscales"][0]["datasets"]) == 2
+    assert ome_metadata["multiscales"][0]["datasets"][0]["coordinateTransformations"][
+        0
+    ]["scale"] == [
+        1,
+        11,
+        11,
+        28,
+    ]
+    assert ome_metadata["multiscales"][0]["datasets"][1]["coordinateTransformations"][
+        0
+    ]["scale"] == [
+        1,
+        22,
+        22,
+        28,
+    ]
+
+    validate(
+        instance=ome_metadata,
+        schema=json.loads(
+            UPath(
+                "https://raw.githubusercontent.com/ome/ngff/4df0940e4738c3f337a037ecdfb543328e5222e8/latest/schemas/image.schema"
             ).read_bytes()
         ),
     )
